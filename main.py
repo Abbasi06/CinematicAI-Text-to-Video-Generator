@@ -1,29 +1,23 @@
-# main.py
-
+# --- Cinematic AI : Text-to-Video Generator ---
 import streamlit as st
-from StableDiffusion import TextToVideoGenerator
+from StableDiffusion import TextToVideoGenerator # Assuming StableDiffusion is the module name for TextToVideoGenerator
 import os
 import time
 
-# --- Page Configuration ---
 st.set_page_config(
     page_title="Cinematic AI",
     page_icon="🎬",
     layout="wide"
 )
 
-# --- Caching the Generator ---
-# This is the most important step for performance.
-# It ensures the heavy models are loaded only ONCE.
 @st.cache_resource
 def load_generator(model_choice):
     """Loads and caches the generator based on the selected model."""
     return TextToVideoGenerator(model_choice=model_choice)
 
 # --- UI Layout ---
-st.title("🎬 Cinematic AI: Your Ideas in Motion")
+st.title("🎬 Cinematic AI: A Text-to-Video Generator")
 st.markdown("Describe a scene, and watch as AI crafts a unique video clip for you.")
-
 # Create a directory for outputs if it doesn't exist
 if not os.path.exists("output"):
     os.makedirs("output")
@@ -40,13 +34,13 @@ with st.container():
             captions=("Fastest generation, good for rapid ideas.", "Higher quality, but much slower.")
         )
     with col2:
-        st.write("") # Spacer
-        st.write("") # Spacer
+        st.write("") 
+        st.write("")
         generate_button = st.button("Generate Video", type="primary", use_container_width=True)
 
 # --- Generation Logic ---
 if generate_button:
-    start_time = time.time()
+    start_total_time = time.time()
     if not prompt:
         st.warning("Please enter a prompt to generate a video.")
     else:
@@ -61,27 +55,31 @@ if generate_button:
                 # Load the appropriate generator (will be cached)
                 generator = load_generator(model_choice)
                 
-                # Run the generation process
-                final_image_path, final_video_path = generator.generate(
+                # Run the generation process and capture all four returned values
+                final_image_path, final_video_path, t2i_time, svd_time = generator.generate(
                     prompt=prompt,
                     image_output_path=image_path,
                     video_output_path=video_path
                 )
-                elapsed_time = int(time.time())- timestamp
-
+                
+                end_total_time = time.time()
+                total_duration = end_total_time - start_total_time
+                
 
                 # --- Display the results ---
                 st.subheader("Results")
                 
                 res_col1, res_col2 = st.columns(2)
                 with res_col1:
-                    st.image(final_image_path, caption="Generated Seed Image")
+                    st.image(final_image_path, caption=f"Generated Seed Image (Time: {t2i_time:.2f}s)") 
                 with res_col2:
                     # To display the video, we need to read it as bytes
                     with open(final_video_path, "rb") as video_file:
                         video_bytes = video_file.read()
-                    st.video(video_bytes)
-                print(f"Took {elapsed_time}s to generate the video.")
-
+                    st.video(video_bytes, caption=f"Generated Video (Time: {svd_time:.2f}s)")
+                
+                # Display the total time taken
+                st.success(f"✅ Generation Complete! Total wall time taken: **{total_duration:.2f} seconds** (including model loading/unloading).")
+                
             except Exception as e:
                 st.error(f"An error occurred: {e}")
